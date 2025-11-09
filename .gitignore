@@ -1,0 +1,14 @@
+# Maven target folder
+target/
+
+# VS Code settings
+.vscode/
+
+# macOS system files
+.DS_Store
+
+# Logs
+*.log
+
+# CSV output from app
+expenses.csv

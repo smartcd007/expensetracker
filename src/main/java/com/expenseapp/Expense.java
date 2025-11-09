@@ -9,7 +9,8 @@ public class Expense {
     private double amount;
     private String note;
 
-    public Expense() {}
+    public Expense() {
+    }
 
     public Expense(String date, String category, double amount, String note) {
         this.date = date;
@@ -18,10 +19,21 @@ public class Expense {
         this.note = note;
     }
 
-    public String getDate() { return date; }
-    public String getCategory() { return category; }
-    public double getAmount() { return amount; }
-    public String getNote() { return note; }
+    public String getDate() {
+        return date;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public String getNote() {
+        return note;
+    }
 
     public void setDate(String date) {
         // validate date when setting
@@ -32,9 +44,18 @@ public class Expense {
             throw new IllegalArgumentException("Invalid date: " + date, ex);
         }
     }
-    public void setCategory(String category) { this.category = category; }
-    public void setAmount(double amount) { this.amount = amount; }
-    public void setNote(String note) { this.note = note; }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
 
     @Override
     public String toString() {
@@ -51,7 +72,8 @@ public class Expense {
 
     public static Expense fromCsv(String csvLine) {
         String[] parts = csvLine.split(",", -1);
-        if (parts.length < 4) return null;
+        if (parts.length < 4)
+            return null;
         String date = parts[0];
         // validate date is a real ISO date (yyyy-MM-dd)
         try {
@@ -63,7 +85,10 @@ public class Expense {
         }
         String category = parts[1];
         double amount = 0;
-        try { amount = Double.parseDouble(parts[2]); } catch (NumberFormatException e) {}
+        try {
+            amount = Double.parseDouble(parts[2]);
+        } catch (NumberFormatException e) {
+        }
         String note = parts[3];
         return new Expense(date, category, amount, note);
     }
