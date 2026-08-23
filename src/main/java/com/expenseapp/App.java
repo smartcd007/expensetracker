@@ -1,5 +1,6 @@
 package com.expenseapp;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Scanner;
 
@@ -9,13 +10,15 @@ public class App {
         ExpenseManager manager = new ExpenseManager(dataFile);
         Scanner sc = new Scanner(System.in);
 
+        clearScreen();
         System.out.println("Welcome to Expense Tracker (simple CLI)");
         while (true) {
             System.out.println("\n--- Menu ---");
             System.out.println("1. Add Expense");
             System.out.println("2. View All Expenses");
-            System.out.println("3. View Total Spent");
-            System.out.println("4. Save & Exit");
+            System.out.println("3. Search Expenses");
+            System.out.println("4. View Total Spent");
+            System.out.println("5. Save & Exit");
             System.out.print("Choose an option: ");
             String input = sc.nextLine().trim();
 
@@ -28,9 +31,9 @@ public class App {
                     String category = sc.nextLine().trim();
 
                     System.out.print("Amount: ");
-                    double amount = 0;
+                    BigDecimal amount;
                     try {
-                        amount = Double.parseDouble(sc.nextLine().trim());
+                        amount = new BigDecimal(sc.nextLine().trim());
                     } catch (NumberFormatException e) {
                         System.out.println("Invalid amount. Try again.");
                         break;
@@ -45,23 +48,23 @@ public class App {
                     break;
 
                 case "2":
-                    List<Expense> list = manager.all();
-                    if (list.isEmpty()) {
-                        System.out.println("No expenses recorded.");
-                    } else {
-                        System.out.println("\nDate | Category      | Amount | Note");
-                        System.out.println("-----------------------------------------------");
-                        for (Expense ex : list) {
-                            System.out.println(ex);
-                        }
-                    }
+                    clearScreen();
+                    displayExpenses(manager.all(), "No expenses recorded.");
                     break;
 
                 case "3":
-                    System.out.printf("Total Spent: ₹%.2f%n", manager.total());
+                    System.out.print("Search category or note: ");
+                    String query = sc.nextLine();
+                    clearScreen();
+                    displayExpenses(manager.search(query), "No expenses found matching that query.");
                     break;
 
                 case "4":
+                    clearScreen();
+                    System.out.printf("Total Spent: ₹%.2f%n", manager.total());
+                    break;
+
+                case "5":
                     manager.saveToFile();
                     System.out.println("Saved to " + dataFile + ". Exiting. Goodbye!");
                     sc.close();
@@ -69,8 +72,26 @@ public class App {
                     break;
 
                 default:
-                    System.out.println("Invalid choice. Enter 1-4.");
+                    System.out.println("Invalid choice. Enter 1-5.");
             }
+        }
+    }
+
+    private static void clearScreen() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+    }
+
+    private static void displayExpenses(List<Expense> expenses, String emptyMessage) {
+        if (expenses.isEmpty()) {
+            System.out.println(emptyMessage);
+            return;
+        }
+
+        System.out.println("\nDate | Category      | Amount | Note");
+        System.out.println("-----------------------------------------------");
+        for (Expense expense : expenses) {
+            System.out.println(expense);
         }
     }
 }
