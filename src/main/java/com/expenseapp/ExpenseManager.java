@@ -1,9 +1,15 @@
 package com.expenseapp;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 
 public class ExpenseManager {
     private final List<Expense> expenses = new ArrayList<>();
@@ -22,15 +28,35 @@ public class ExpenseManager {
         return new ArrayList<>(expenses);
     }
 
-    public double total() {
-        return expenses.stream().mapToDouble(Expense::getAmount).sum();
+    public List<Expense> search(String query) {
+        if (query == null || query.isBlank()) {
+            return all();
+        }
+
+        String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
+        List<Expense> matches = new ArrayList<>();
+        for (Expense expense : expenses) {
+            String category = expense.getCategory();
+            String note = expense.getNote();
+            if ((category != null && category.toLowerCase(Locale.ROOT).contains(normalizedQuery))
+                    || (note != null && note.toLowerCase(Locale.ROOT).contains(normalizedQuery))) {
+                matches.add(expense);
+            }
+        }
+        return matches;
+    }
+
+    public BigDecimal total() {
+        return expenses.stream()
+                .map(Expense::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public void saveToFile() {
-        try (BufferedWriter bw = Files.newBufferedWriter(csvPath)) {
+        try (BufferedWriter writer = Files.newBufferedWriter(csvPath);
+                CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT)) {
             for (Expense e : expenses) {
-                bw.write(e.toCsv());
-                bw.newLine();
+                printer.printRecord(e.getDate(), e.getCategory(), e.getAmount().toPlainString(), e.getNote());
             }
         } catch (IOException ex) {
             System.err.println("Error saving expenses: " + ex.getMessage());
@@ -38,12 +64,14 @@ public class ExpenseManager {
     }
 
     private void loadFromFile() {
-        if (!Files.exists(csvPath)) return;
-        try (BufferedReader br = Files.newBufferedReader(csvPath)) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                Expense e = Expense.fromCsv(line);
-                if (e != null) expenses.add(e);
+        if (!Files.exists(csvPath))
+            return;
+        try (Reader reader = Files.newBufferedReader(csvPath);
+                CSVParser parser = CSVFormat.DEFAULT.parse(reader)) {
+            for (var record : parser) {
+                Expense e = Expense.fromCsvRecord(record);
+                if (e != null)
+                    expenses.add(e);
             }
         } catch (IOException ex) {
             System.err.println("Error loading expenses: " + ex.getMessage());

@@ -1,21 +1,31 @@
 package com.expenseapp;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 
 public class Expense {
     private String date; // stored in ISO yyyy-MM-dd
     private String category;
-    private double amount;
+    private BigDecimal amount;
     private String note;
 
     public Expense() {
     }
 
-    public Expense(String date, String category, double amount, String note) {
+    public Expense(String date, String category, BigDecimal amount, String note) {
         this.date = date;
         this.category = category;
-        this.amount = amount;
+        setAmount(amount);
         this.note = note;
     }
 
@@ -27,7 +37,7 @@ public class Expense {
         return category;
     }
 
-    public double getAmount() {
+    public BigDecimal getAmount() {
         return amount;
     }
 
@@ -49,8 +59,11 @@ public class Expense {
         this.category = category;
     }
 
-    public void setAmount(double amount) {
-        this.amount = amount;
+    public void setAmount(BigDecimal amount) {
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount cannot be null");
+        }
+        this.amount = amount.setScale(2, RoundingMode.HALF_UP);
     }
 
     public void setNote(String note) {
@@ -64,32 +77,53 @@ public class Expense {
 
     // CSV row representation
     public String toCsv() {
-        // escape commas simply by replacing with semicolon if present
-        String safeNote = note == null ? "" : note.replace(",", ";");
-        String safeCategory = category == null ? "" : category.replace(",", ";");
-        return String.join(",", date, safeCategory, String.valueOf(amount), safeNote);
+        try {
+            StringWriter output = new StringWriter();
+            try (CSVPrinter printer = new CSVPrinter(output, CSVFormat.DEFAULT)) {
+                printer.printRecord(date, category, amount.toPlainString(), note);
+            }
+            String serialized = output.toString();
+            return serialized.endsWith("\r\n")
+                    ? serialized.substring(0, serialized.length() - 2)
+                    : serialized.substring(0, serialized.length() - 1);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to serialize expense", ex);
+        }
     }
 
     public static Expense fromCsv(String csvLine) {
-        String[] parts = csvLine.split(",", -1);
-        if (parts.length < 4)
+        if (csvLine == null) {
             return null;
-        String date = parts[0];
+        }
+        try (CSVParser parser = CSVFormat.DEFAULT.parse(new StringReader(csvLine))) {
+            var records = parser.getRecords();
+            if (records.size() != 1 || records.get(0).size() != 4) {
+                return null;
+            }
+            return fromCsvRecord(records.get(0));
+        } catch (IOException | IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    static Expense fromCsvRecord(CSVRecord record) {
+        if (record.size() != 4) {
+            return null;
+        }
+        String date = record.get(0);
         // validate date is a real ISO date (yyyy-MM-dd)
         try {
             LocalDate parsed = LocalDate.parse(date);
-            date = parsed.toString(); // normalize format
+            date = parsed.toString();
         } catch (DateTimeParseException ex) {
-            System.err.println("Invalid date in CSV line, skipping: " + date + " (line: " + csvLine + ")");
             return null;
         }
-        String category = parts[1];
-        double amount = 0;
+        BigDecimal amount;
         try {
-            amount = Double.parseDouble(parts[2]);
-        } catch (NumberFormatException e) {
+            amount = new BigDecimal(record.get(2));
+        } catch (NumberFormatException ex) {
+            return null;
         }
-        String note = parts[3];
-        return new Expense(date, category, amount, note);
+        return new Expense(date, record.get(1), amount, record.get(3));
     }
 }

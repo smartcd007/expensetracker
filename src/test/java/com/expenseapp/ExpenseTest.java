@@ -2,6 +2,8 @@ package com.expenseapp;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ExpenseTest {
@@ -18,7 +20,7 @@ public class ExpenseTest {
         assertNotNull(e);
         assertEquals("2025-10-09", e.getDate());
         assertEquals("food", e.getCategory());
-        assertEquals(10.0, e.getAmount());
+        assertEquals(new BigDecimal("10.00"), e.getAmount());
         assertEquals("lunch", e.getNote());
     }
 
@@ -33,5 +35,26 @@ public class ExpenseTest {
         Expense e = new Expense();
         e.setDate("2025-01-05");
         assertEquals("2025-01-05", e.getDate());
+    }
+
+    @Test
+    void amount_usesExactDecimalArithmetic() {
+        Expense first = new Expense("2025-10-09", "food", new BigDecimal("0.10"), "first");
+        Expense second = new Expense("2025-10-10", "food", new BigDecimal("0.20"), "second");
+
+        assertEquals(new BigDecimal("0.30"), first.getAmount().add(second.getAmount()));
+    }
+
+    @Test
+    void csv_roundTripsQuotedFields() {
+        Expense original = new Expense("2025-10-09", "food, dining", new BigDecimal("12.50"),
+                "lunch, with \"friends\"\nand dessert");
+
+        Expense parsed = Expense.fromCsv(original.toCsv());
+
+        assertNotNull(parsed);
+        assertEquals(original.getCategory(), parsed.getCategory());
+        assertEquals(original.getAmount(), parsed.getAmount());
+        assertEquals(original.getNote(), parsed.getNote());
     }
 }
